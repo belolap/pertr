@@ -61,7 +61,7 @@ func TestTransport(t *testing.T) {
 			name:    "simple request",
 			mode:    "echo",
 			method:  "get",
-			timeout: 100 * time.Second,
+			timeout: 1 * time.Second,
 			body:    "abc",
 			expect:  []testChunk{{c: 3, l: 3, v: "abc"}},
 		},
