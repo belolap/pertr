@@ -25,5 +25,6 @@ rsp, err := cli.Do(req)
 1. This wrapper will repeat request to server, even resend POST request body. Please
 use it with caution.
 
-2. Go docs [says](https://pkg.go.dev/net/http#RoundTripper) that Round Trip should
-not attempt to interpret the response. However, this library does this.
+2. Go docs [says](https://pkg.go.dev/net/http#RoundTripper) that
+[http.RoundTripper](https://pkg.go.dev/net/http#RoundTripper) should not attempt
+to interpret the response. However, this library does this.
