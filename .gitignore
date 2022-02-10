@@ -16,3 +16,6 @@
 
 # VS Code files
 *.code-workspace
+
+# Temp dir
+tmp/
