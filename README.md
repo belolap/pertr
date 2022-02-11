@@ -21,6 +21,11 @@ cli := http.Client{Transport: pertr.Wrapper{}}
 rsp, err := cli.Do(req)
 ```
 
+## Reuse wrapper
+
+TBD.
+
+
 ## Warning!
 
 1. This wrapper will repeat request to server, even resend POST request body. Please
