@@ -1,30 +1,92 @@
 package pertr
 
 import (
+	"context"
+	"errors"
 	"net/http"
+	"sync"
 )
 
-// Wrapper represents http.RoundTrip.
-type Wrapper struct {
-	Transport http.RoundTripper
+var ErrUsed = errors.New("context already used")
+
+// options contains settings for wrapper.
+type options struct {
+	cli *http.Client
+	tr  http.RoundTripper
+	ctx context.Context
+}
+
+type option func(*options)
+
+// WitClient sets client to make additional requests.
+func WithClient(cli *http.Client) option {
+	return func(o *options) {
+		o.cli = cli
+	}
+}
+
+// WithTransport sets upstream transport.
+func WithTransport(tr http.RoundTripper) option {
+	return func(o *options) {
+		o.tr = tr
+	}
+}
+
+// WithContext sets context to read body.
+func WithContext(ctx context.Context) option {
+	return func(o *options) {
+		o.ctx = ctx
+	}
+}
+
+// wrapper represents http.RoundTrip.
+type wrapper struct {
+	sync.Mutex
+	opts options
+	used bool
+}
+
+// New creates new wrapper.
+func New(opts ...option) http.RoundTripper {
+	w := wrapper{
+		opts: options{
+			cli: http.DefaultClient,
+			tr:  http.DefaultTransport,
+		},
+	}
+	for _, o := range opts {
+		o(&w.opts)
+	}
+	return &w
+}
+
+func (w *wrapper) SetContext(ctx context.Context) {
+	w.Lock()
+	w.opts.ctx = ctx
+	w.Unlock()
 }
 
 // RoundTrip executes http transaction and resume download operation if
 // connection will be lost. It use Range header to start new download operations.
-func (w Wrapper) RoundTrip(req *http.Request) (*http.Response, error) {
-	var t http.RoundTripper
-	if w.Transport != nil {
-		t = w.Transport
-	} else {
-		t = http.DefaultTransport
-	}
-
-	rsp, err := t.RoundTrip(req)
+// RoundTrip() can't be used second time if context is used. If you want to use
+// use transport second time, set new context with SetContext() first.
+func (w *wrapper) RoundTrip(req *http.Request) (*http.Response, error) {
+	rsp, err := w.opts.tr.RoundTrip(req)
 	if err != nil {
 		return nil, err
 	}
 
-	rsp.Body = &body{rsp: rsp, up: rsp.Body, ctx: req.Context()}
+	if rsp.Body != nil && rsp.Body != http.NoBody {
+		w.Lock()
+		defer w.Unlock()
+		if w.used {
+			return nil, ErrUsed
+		}
+		if w.opts.ctx != nil {
+			w.used = true
+		}
+		rsp.Body = &body{rsp: rsp, up: rsp.Body, ctx: req.Context()}
+	}
 
 	return rsp, nil
 }
