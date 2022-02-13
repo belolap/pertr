@@ -38,6 +38,8 @@ func (b *body) Read(p []byte) (n int, err error) {
 		b.ferr = err
 	}
 
+	_ = b.up.Close()
+
 	select {
 	case <-b.ctx.Done():
 		return n, context.DeadlineExceeded
