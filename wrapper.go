@@ -76,7 +76,7 @@ func (w *wrapper) RoundTrip(req *http.Request) (*http.Response, error) {
 		if w.opts.ctx != nil {
 			w.used = true
 		}
-		rsp.Body = &body{rsp: rsp, up: rsp.Body, ctx: req.Context()}
+		rsp.Body = &body{tr: w.opts.tr, rsp: rsp, up: rsp.Body, ctx: req.Context()}
 	}
 
 	return rsp, nil

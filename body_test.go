@@ -56,6 +56,52 @@ func TestBody(t *testing.T) {
 			expect: []testExpectChunk{{num: 3, value: "abc"}},
 		},
 		{
+			name:   "resume",
+			method: "GET",
+			sizes:  []int{1, 2, 3},
+			handler: func(h *mock.Handler) {
+				gomock.InOrder(
+					h.EXPECT().ServeHTTP(gomock.Any(), gomock.Any()).Do(func(w http.ResponseWriter, r *http.Request) {
+						w.Header().Set("Content-Length", "6")
+						w.WriteHeader(http.StatusOK)
+						_, _ = io.WriteString(w, "abcdef")
+					}),
+					h.EXPECT().ServeHTTP(gomock.Any(), gomock.Any()).Do(func(w http.ResponseWriter, r *http.Request) {
+						w.Header().Set("Content-Length", "6")
+						w.Header().Set("Content-Range", "1-")
+						w.WriteHeader(http.StatusPartialContent)
+						_, _ = io.WriteString(w, "bcdef")
+					}),
+					h.EXPECT().ServeHTTP(gomock.Any(), gomock.Any()).Do(func(w http.ResponseWriter, r *http.Request) {
+						w.Header().Set("Content-Length", "6")
+						w.Header().Set("Content-Range", "3-")
+						w.WriteHeader(http.StatusPartialContent)
+						_, _ = io.WriteString(w, "def")
+					}),
+				)
+			},
+			body: func(b *mock.Body) {
+				b.EXPECT().Read(match.SliceSize(1)).DoAndReturn(func(p []byte) (int, error) {
+					copy(p, []byte("a"))
+					return 1, errors.New("some err")
+				})
+				b.EXPECT().Read(match.SliceSize(2)).DoAndReturn(func(p []byte) (int, error) {
+					copy(p, []byte("bc"))
+					return 2, errors.New("some err")
+				})
+				b.EXPECT().Read(match.SliceSize(3)).DoAndReturn(func(p []byte) (int, error) {
+					copy(p, []byte("def"))
+					return 3, nil
+				})
+				b.EXPECT().Close()
+			},
+			expect: []testExpectChunk{
+				{num: 1, value: "a"},
+				{num: 2, value: "bc"},
+				{num: 3, value: "def"},
+			},
+		},
+		{
 			name:   "immediately error",
 			method: "GET",
 			sizes:  []int{1},
@@ -103,7 +149,7 @@ func TestBody(t *testing.T) {
 				rsp, err := http.DefaultTransport.RoundTrip(req)
 				rsp.Body = body
 				return rsp, err
-			})
+			}).AnyTimes()
 
 			// Set request context with download timeout.
 			ctx := context.Background()
