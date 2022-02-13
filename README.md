@@ -44,6 +44,7 @@ mytr := http.Transport{}
 wrapper := pertr.New(pertr.WithTransport(&mytr))
 ```
 
+if custom transport not specified `http.DefaultTransport` will be used.
 
 ## Errors
 
