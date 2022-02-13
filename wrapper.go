@@ -11,19 +11,11 @@ var ErrUsed = errors.New("context already used")
 
 // options contains settings for wrapper.
 type options struct {
-	cli *http.Client
 	tr  http.RoundTripper
 	ctx context.Context
 }
 
 type option func(*options)
-
-// WitClient sets client to make additional requests.
-func WithClient(cli *http.Client) option {
-	return func(o *options) {
-		o.cli = cli
-	}
-}
 
 // WithTransport sets upstream transport.
 func WithTransport(tr http.RoundTripper) option {
@@ -50,8 +42,7 @@ type wrapper struct {
 func New(opts ...option) http.RoundTripper {
 	w := wrapper{
 		opts: options{
-			cli: http.DefaultClient,
-			tr:  http.DefaultTransport,
+			tr: http.DefaultTransport,
 		},
 	}
 	for _, o := range opts {
